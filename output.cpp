@@ -10,9 +10,10 @@
 #include <cmath>
 #include <sstream>
 #include <stdio.h>
+#include <vector>
 
 using namespace std;
-void output(int Ntemp, int mode_sop, int mode_dtt, int mode_c_sop, int mode_c_dtt, ofstream& out1, ofstream& out2, ofstream& out3, ofstream& out5, DATA vt[], DATA2 bt[][MOL2], LOG& logdt, int mode_v, int mode_chain_sop, int mode_chain_dtt){
+void output(int Ntemp, int mode_sop, int mode_dtt, int mode_c_sop, int mode_c_dtt, ofstream& out1, ofstream& out2, ofstream& out3, ofstream& out5, vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, int mode_v, int mode_chain_sop, int mode_chain_dtt){
 	
 	out2<<"ITEM: TIMESTEP"<<endl;
 	out2<<Ntemp<<endl;

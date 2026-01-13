@@ -10,13 +10,14 @@
 #include <cmath>
 #include <sstream>
 #include <stdio.h>
+#include <vector>
 
 using namespace std;
-void conformation_sop(DATA vt[], LOG& logdt, double sop_j){
+void conformation_sop(vector<DATA>& vt, LOG& logdt, double sop_j){
 	
-	int segment[logdt.Ncen+10];
-	int segment_type[logdt.Ncen];
-	int head[logdt.Ncen];
+	vector<int> segment(logdt.Ncen + 10, 0);
+	vector<int> segment_type(logdt.Ncen, 0);
+	vector<int> head(logdt.Ncen, 0);
 	int tail;
 	int Ns=-1;
 	double vec_A,vec_B,vec_AB,CosD;
@@ -112,11 +113,11 @@ void conformation_sop(DATA vt[], LOG& logdt, double sop_j){
 	
 }
 
-void conformation_dtt(DATA2 bt[][MOL2], DATA vt[], LOG& logdt, double dtt_sj){
+void conformation_dtt(vector<vector<DATA2>>& bt, vector<DATA>& vt, LOG& logdt, double dtt_sj){
 	
-	int segment[logdt.Ncen+10];
-	int segment_type[logdt.Ncen];
-	int head[logdt.Ncen];
+	vector<int> segment(logdt.Ncen + 10, 0);
+	vector<int> segment_type(logdt.Ncen, 0);
+	vector<int> head(logdt.Ncen, 0);
 	int tail;
 	int Ns=-1;
 	double vec_A,vec_B,vec_AB,CosD;

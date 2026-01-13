@@ -10,9 +10,10 @@
 #include <cmath>
 #include <sstream>
 #include <stdio.h>
+#include <vector>
 
 using namespace std;
-void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7, int Nt){
+void volume_cry1(vector<DATA>& vt, LOG& logdt, double sop_j, int v_dump, ofstream& out7, int Nt){
 	
 	double lxx=logdt.box_x/logdt.probe;
 	double lyy=logdt.box_y/logdt.probe;
@@ -21,15 +22,11 @@ void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7
 	int ly=int(lyy);
 	int lz=int(lzz);
 	
-	int matrix[lx+1][ly+1][lz+1];
-
-	for(int i=0;i<lx+1;i++){
-		for(int j=0;j<ly+1;j++){
-			for(int s=0;s<lz+1;s++){
-				matrix[i][j][s]=0;
-			}
-		}
-	}
+	int mx = lx + 1;
+	int my = ly + 1;
+	int mz = lz + 1;
+	vector<int> matrix(mx * my * mz, 0);
+	auto idx = [&](int i, int j, int k) { return (i * my + j) * mz + k; };
 	
 	double ixx,iyy,izz;
 	int Nc=0,ix,iy,iz;
@@ -47,7 +44,7 @@ void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7
 			if(iy>ly) iy=ly;
 			if(iz<0) iz=0;
 			if(iz>lz) iz=lz;
-			matrix[ix][iy][iz]=1;
+			matrix[idx(ix, iy, iz)]=1;
 		}
 	}
 	
@@ -66,11 +63,11 @@ void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7
 	for(int i=0;i<lx;i++){
 		for(int j=0;j<ly;j++){
 			for(int s=0;s<lz;s++){
-				if(matrix[i][j][s]==1){
+				if(matrix[idx(i, j, s)]==1){
 					Nc++;
 				}
 				if(v_dump==1){
-					out7<<i*ly*lz+j*lz+s+1<<" "<<matrix[i][j][s]<<" "<<(i+0.5)*logdt.probe+logdt.box_xlo<<" "<<(j+0.5)*logdt.probe+logdt.box_ylo<<" "<<(s+0.5)*logdt.probe+logdt.box_zlo<<endl;
+					out7<<i*ly*lz+j*lz+s+1<<" "<<matrix[idx(i, j, s)]<<" "<<(i+0.5)*logdt.probe+logdt.box_xlo<<" "<<(j+0.5)*logdt.probe+logdt.box_ylo<<" "<<(s+0.5)*logdt.probe+logdt.box_zlo<<endl;
 				}
 			}
 		}
@@ -80,7 +77,7 @@ void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7
 
 }
 
-void volume_cry2(DATA vt[], DATA2 bt[][MOL2], LOG& logdt, double dtt_sj, int v_dump, ofstream& out8, int Nt){
+void volume_cry2(vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, double dtt_sj, int v_dump, ofstream& out8, int Nt){
 	
 	double lxx=logdt.box_x/logdt.probe;
 	double lyy=logdt.box_y/logdt.probe;
@@ -89,16 +86,12 @@ void volume_cry2(DATA vt[], DATA2 bt[][MOL2], LOG& logdt, double dtt_sj, int v_d
 	int ly=int(lyy);
 	int lz=int(lzz);
 	
-	int matrix[lx+1][ly+1][lz+1];
+	int mx = lx + 1;
+	int my = ly + 1;
+	int mz = lz + 1;
+	vector<int> matrix(mx * my * mz, 0);
+	auto idx = [&](int i, int j, int k) { return (i * my + j) * mz + k; };
 	
-	for(int i=0;i<lx+1;i++){
-		for(int j=0;j<ly+1;j++){
-			for(int s=0;s<lz+1;s++){
-				matrix[i][j][s]=0;
-			}
-		}
-	}
-
 	double ixx,iyy,izz;
 	int Nc=0,kk,ss,id,ix,iy,iz;
 	for(int k=0;k<logdt.Ncen;++k){
@@ -118,7 +111,7 @@ void volume_cry2(DATA vt[], DATA2 bt[][MOL2], LOG& logdt, double dtt_sj, int v_d
 			if(iy>ly) iy=ly;
 			if(iz<0) iz=0;
 			if(iz>lz) iz=lz;
-			matrix[ix][iy][iz]=1;
+			matrix[idx(ix, iy, iz)]=1;
 		}
 	}
 	
@@ -137,11 +130,11 @@ void volume_cry2(DATA vt[], DATA2 bt[][MOL2], LOG& logdt, double dtt_sj, int v_d
 	for(int i=0;i<lx;i++){
 		for(int j=0;j<ly;j++){
 			for(int s=0;s<lz;s++){
-				if(matrix[i][j][s]==1){
+				if(matrix[idx(i, j, s)]==1){
 					Nc++;
 				}
 				if(v_dump==1){
-					out8<<i*ly*lz+j*lz+s+1<<" "<<matrix[i][j][s]<<" "<<(i+0.5)*logdt.probe+logdt.box_xlo<<" "<<(j+0.5)*logdt.probe+logdt.box_ylo<<" "<<(s+0.5)*logdt.probe+logdt.box_zlo<<endl;
+					out8<<i*ly*lz+j*lz+s+1<<" "<<matrix[idx(i, j, s)]<<" "<<(i+0.5)*logdt.probe+logdt.box_xlo<<" "<<(j+0.5)*logdt.probe+logdt.box_ylo<<" "<<(s+0.5)*logdt.probe+logdt.box_zlo<<endl;
 				}
 			}
 		}
