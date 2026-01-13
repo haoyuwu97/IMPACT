@@ -1,5 +1,5 @@
 
-TARGET	 = CAP_v6.0.1
+TARGET	 = IMPACT
 
 OBJS     = main.o input.o calculate.o cluster.o volume_cry.o output.o conformation.o
 
