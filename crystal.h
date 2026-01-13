@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <fstream>
+#include <vector>
 
-#define AT 1000000
-#define MOL1 10000
-#define MOL2 1000
 using namespace std;
 
 struct DATA
@@ -12,14 +10,12 @@ struct DATA
 	int cenid,mol,ty,site,site_size,cenix,ceniy,ceniz,moltype_sop,moltype_dtt;
 	int btid_k,btid_s;
 };
-extern struct DATA vector[AT];
 
 struct DATA2
 {
 	double x,y,z,realx,realy,realz,vx,vy,vz;
 	int ty,dttid,site,site_size,ix,iy,iz;
 };
-extern struct DATA2 bondatom[MOL1][MOL2];
 
 struct LOG
 {
@@ -39,51 +35,82 @@ struct LOG
 	double sop_cluster_size_avgW;
 	int sop_crystal_num,sop_cluster_num,sop_cluster_size_max;
 	int sop_cluster_num2,Ncl_all_sop;
-	int sop_cluster_size[AT];
-	double sop_cluster_gy[AT];
-	double sop_cluster_gyx[AT];
-	double sop_cluster_gyy[AT];
-	double sop_cluster_gyz[AT];
-	double sop_cluster_cx[AT];
-	double sop_cluster_cy[AT];
-	double sop_cluster_cz[AT];
-	double sop_cluster_vx[AT];
-	double sop_cluster_vy[AT];
-	double sop_cluster_vz[AT];
+	vector<int> sop_cluster_size;
+	vector<double> sop_cluster_gy;
+	vector<double> sop_cluster_gyx;
+	vector<double> sop_cluster_gyy;
+	vector<double> sop_cluster_gyz;
+	vector<double> sop_cluster_cx;
+	vector<double> sop_cluster_cy;
+	vector<double> sop_cluster_cz;
+	vector<double> sop_cluster_vx;
+	vector<double> sop_cluster_vy;
+	vector<double> sop_cluster_vz;
 	
-	int ncluster[AT];
+	vector<int> ncluster;
 	
 	double crystal_pro,crystal_pro_v;	
 	double cluster_gy_max,cluster_gy_avg,cluster_gy_x_max,cluster_gy_x_avg,cluster_gy_y_max,cluster_gy_y_avg,cluster_gy_z_max,cluster_gy_z_avg,cluster_size_avg;	
 	double cluster_size_avgW;
 	int crystal_num,cluster_num,cluster_size_max;
 	int cluster_num2,Ncl_all;
-	int cluster_size[AT];
-	double cluster_gy[AT];
-	double cluster_gyx[AT];
-	double cluster_gyy[AT];
-	double cluster_gyz[AT];
-	double cluster_cx[AT];
-	double cluster_cy[AT];
-	double cluster_cz[AT];
-	double cluster_vx[AT];
-	double cluster_vy[AT];
-	double cluster_vz[AT];
-	int dtt_num[AT];
+	vector<int> cluster_size;
+	vector<double> cluster_gy;
+	vector<double> cluster_gyx;
+	vector<double> cluster_gyy;
+	vector<double> cluster_gyz;
+	vector<double> cluster_cx;
+	vector<double> cluster_cy;
+	vector<double> cluster_cz;
+	vector<double> cluster_vx;
+	vector<double> cluster_vy;
+	vector<double> cluster_vz;
+	vector<int> dtt_num;
 	int Mol,Ndtt;
-	int Nmol[AT];
+	vector<int> Nmol;
 	double probe;
-};
-extern struct LOG logdata;
 
-void input(ifstream &in, DATA vt[], DATA2 bt[][MOL2], LOG& logdt, int typejudge[]);
-void calculate_1(double sop_r, double sop_j, int mode_c, double cluster_p[], ofstream& out4, DATA vt[], LOG& logdt, int Nt, int mode_v, int v_dump, ofstream& out7, int mode_chain_sop);
-void calculate_2(double dtt_j, double dtt_sj, int mode_c, double cluster_p[], ofstream& out6, DATA vt[], DATA2 bt[][MOL2], LOG& logdt, int Nt, int mode_v, int v_dump, ofstream& out8, int mode_chain_dtt);
-void volume_cry1(DATA vt[], LOG& logdt, double sop_j, int v_dump, ofstream& out7, int Nt);
-void volume_cry2(DATA vt[], DATA2 bt[][MOL2], LOG& logdt, double dtt_sj, int v_dump, ofstream& out8, int Nt);
-void cluster_1(double sop_j, double cluster_p[], DATA vt[], LOG& logdt);
-void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], DATA vt[], DATA2 bt[][MOL2], LOG& logdt);
+	void reset_sop_clusters(size_t n) {
+		sop_cluster_size.assign(n, 0);
+		sop_cluster_gy.assign(n, 0.0);
+		sop_cluster_gyx.assign(n, 0.0);
+		sop_cluster_gyy.assign(n, 0.0);
+		sop_cluster_gyz.assign(n, 0.0);
+		sop_cluster_cx.assign(n, 0.0);
+		sop_cluster_cy.assign(n, 0.0);
+		sop_cluster_cz.assign(n, 0.0);
+		sop_cluster_vx.assign(n, 0.0);
+		sop_cluster_vy.assign(n, 0.0);
+		sop_cluster_vz.assign(n, 0.0);
+	}
+
+	void reset_dtt_clusters(size_t n) {
+		cluster_size.assign(n, 0);
+		cluster_gy.assign(n, 0.0);
+		cluster_gyx.assign(n, 0.0);
+		cluster_gyy.assign(n, 0.0);
+		cluster_gyz.assign(n, 0.0);
+		cluster_cx.assign(n, 0.0);
+		cluster_cy.assign(n, 0.0);
+		cluster_cz.assign(n, 0.0);
+		cluster_vx.assign(n, 0.0);
+		cluster_vy.assign(n, 0.0);
+		cluster_vz.assign(n, 0.0);
+	}
+
+	void reset_clusters(size_t n) {
+		ncluster.assign(n, 0);
+	}
+};
+
+bool input(istream &in, vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, const vector<int>& typejudge, bool fast_io);
+void calculate_1(double sop_r, double sop_j, int mode_c, double cluster_p[], ofstream& out4, vector<DATA>& vt, LOG& logdt, int Nt, int mode_v, int v_dump, ofstream& out7, int mode_chain_sop);
+void calculate_2(double dtt_j, double dtt_sj, int mode_c, double cluster_p[], ofstream& out6, vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, int Nt, int mode_v, int v_dump, ofstream& out8, int mode_chain_dtt);
+void volume_cry1(vector<DATA>& vt, LOG& logdt, double sop_j, int v_dump, ofstream& out7, int Nt);
+void volume_cry2(vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, double dtt_sj, int v_dump, ofstream& out8, int Nt);
+void cluster_1(double sop_j, double cluster_p[], vector<DATA>& vt, LOG& logdt);
+void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt);
 int findproclust(int sn, LOG& logdt);
-void output(int Ntemp, int mode_sop, int mode_dtt, int mode_c_sop, int mode_c_dtt, ofstream& out1, ofstream& out2, ofstream& out3, ofstream& out5, DATA vt[], DATA2 bt[][MOL2], LOG& logdt, int mode_v, int mode_chain_sop, int mode_chain_dtt);
-void conformation_sop(DATA vt[], LOG& logdt, double sop_j);
-void conformation_dtt(DATA2 bt[][MOL2], DATA vt[], LOG& logdt, double dtt_sj);
+void output(int Ntemp, int mode_sop, int mode_dtt, int mode_c_sop, int mode_c_dtt, ofstream& out1, ofstream& out2, ofstream& out3, ofstream& out5, vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt, int mode_v, int mode_chain_sop, int mode_chain_dtt);
+void conformation_sop(vector<DATA>& vt, LOG& logdt, double sop_j);
+void conformation_dtt(vector<vector<DATA2>>& bt, vector<DATA>& vt, LOG& logdt, double dtt_sj);
