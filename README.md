@@ -16,7 +16,7 @@ IMPACT is a coarse-grained (CG) crystallization analysis toolkit for semi-crysta
 make
 ```
 
-The build produces the `CAP_v6.0.1` binary by default (you can rename it to `IMPACT` if desired).
+The build produces the `IMPACT` binary by default.
 
 ## Usage
 
