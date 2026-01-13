@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 	
 	if (argc<2) {
 		cout << endl;
-		cout << "Crystallization Analysis Package for Semi-crystalline Polymers & Polymeric Nanocomposites" << endl;
+		cout << "Integrated Multi-topology & Multi-criteria Polymeric Analysis of Crystallization & Cluster Toolkit" << endl;
 		cout << "Usage:" << endl 
 			<< "Program -in Input_file -out Folder_name Parameter" << endl;
 		cout << "Parameter:" << endl
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 		<< "      -slowio : line-based parser"<<endl
 		<< "      -fastio : token-based parser"<<endl;
 		cout << endl;
-		cout << "v6.0 Haoyu Wu Feb.23 2024"<<endl;
+		cout << "v1.0 Haoyu Wu Jan 12 2026"<<endl;
 		cout << endl;
 		return 1;
 	}else{
