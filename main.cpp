@@ -70,9 +70,9 @@ int main(int argc, char *argv[]) {
 		cout << "      -ig : choose ignore the atoms' type; should be the last command"<<endl;
 		cout << "      -ti : time interval; default 1"<<endl;
 		cout << "      -follow : follow growing dump file for realtime analysis"<<endl;
-		cout << "      -poll : follow polling interval in ms; default 1000"<<endl
-		<< "      -slowio : line-based parser"<<endl
-		<< "      -fastio : token-based parser"<<endl;
+		cout << "      -poll : follow polling interval in ms; default 1000"<<endl;
+		cout << "      -slowio : line-based parser"<<endl;
+		cout << "      -fastio : token-based parser"<<endl;
 		cout << endl;
 		cout << "v1.0 Haoyu Wu Jan 12 2026"<<endl;
 		cout << endl;
