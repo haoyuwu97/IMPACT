@@ -7,74 +7,159 @@
 #include <math.h>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 #include <stdio.h>
-
-#define AT 1000000
+#include <vector>
 
 using namespace std;
-void cluster_1(double sop_j, double cluster_p[], DATA vt[], LOG& logdt){
+void cluster_1(double sop_j, double cluster_p[], vector<DATA>& vt, LOG& logdt){
 	int nmtotal=0,temp;
 	int totcluster=1;
 	int kcluster,clustertrue;
-	for(int i=0;i<AT;i++){
-		logdt.ncluster[i]=0;
-	}
+	logdt.reset_clusters(logdt.Ncen + 1);
 	logdt.ncluster[0]=1;
-	int* clustnb=new int[logdt.Ncen];
-	int* cluster2=new int[logdt.Ncen];
-	for(int s=0;s<logdt.Ncen;++s){
-		cluster2[s]=0;
-	}
+	vector<int> clustnb(logdt.Ncen, -1);
+	vector<int> cluster2(logdt.Ncen, 0);
 	cluster2[0]=1;
 	double rx,ry,rz,vec_AB,vec_A,vec_B,CosD,p2;
 	
 	double Rdf=cluster_p[1];
 	double cluster_judge=cluster_p[2];
-	
+	logdt.reset_sop_clusters(logdt.Ncen + 1);
+	int ncen = logdt.Ncen;
+	static vector<int> head;
+	static vector<int> next;
+	static vector<int> cell_index;
+	static vector<double> prev_cenx;
+	static vector<double> prev_ceny;
+	static vector<double> prev_cenz;
+	static double prev_box_x = 0.0;
+	static double prev_box_y = 0.0;
+	static double prev_box_z = 0.0;
+	static double prev_Rdf = 0.0;
+	bool reuse_cells = false;
+	int nx = (Rdf > 0.0) ? int(logdt.box_x / Rdf) : 1;
+	int ny = (Rdf > 0.0) ? int(logdt.box_y / Rdf) : 1;
+	int nz = (Rdf > 0.0) ? int(logdt.box_z / Rdf) : 1;
+	if (nx < 1) nx = 1;
+	if (ny < 1) ny = 1;
+	if (nz < 1) nz = 1;
+	int ncell = nx * ny * nz;
+	if (!cell_index.empty() && prev_cenx.size() == static_cast<size_t>(ncen) && prev_box_x == logdt.box_x && prev_box_y == logdt.box_y && prev_box_z == logdt.box_z && prev_Rdf == Rdf) {
+		double threshold = (Rdf > 0.0) ? 0.25 * Rdf : 0.0;
+		if (threshold > 0.0) {
+			double max_disp2 = 0.0;
+			for (int k = 0; k < ncen; ++k) {
+				double dx = vt[k].cenx - prev_cenx[k];
+				double dy = vt[k].ceny - prev_ceny[k];
+				double dz = vt[k].cenz - prev_cenz[k];
+				double d2 = dx * dx + dy * dy + dz * dz;
+				if (d2 > max_disp2) max_disp2 = d2;
+				prev_cenx[k] = vt[k].cenx;
+				prev_ceny[k] = vt[k].ceny;
+				prev_cenz[k] = vt[k].cenz;
+			}
+			reuse_cells = max_disp2 <= (threshold * threshold);
+		}
+	}
+	if (!reuse_cells) {
+		head.assign(ncell, -1);
+		next.assign(ncen, -1);
+		cell_index.assign(ncen, 0);
+		prev_cenx.assign(ncen, 0.0);
+		prev_ceny.assign(ncen, 0.0);
+		prev_cenz.assign(ncen, 0.0);
+		prev_box_x = logdt.box_x;
+		prev_box_y = logdt.box_y;
+		prev_box_z = logdt.box_z;
+		prev_Rdf = Rdf;
+		for (int k = 0; k < ncen; ++k) {
+			prev_cenx[k] = vt[k].cenx;
+			prev_ceny[k] = vt[k].ceny;
+			prev_cenz[k] = vt[k].cenz;
+			double fx = (vt[k].cenx - logdt.box_xlo) / logdt.box_x;
+			double fy = (vt[k].ceny - logdt.box_ylo) / logdt.box_y;
+			double fz = (vt[k].cenz - logdt.box_zlo) / logdt.box_z;
+			fx -= floor(fx);
+			fy -= floor(fy);
+			fz -= floor(fz);
+			int ix = int(fx * nx);
+			int iy = int(fy * ny);
+			int iz = int(fz * nz);
+			if (ix == nx) ix = nx - 1;
+			if (iy == ny) iy = ny - 1;
+			if (iz == nz) iz = nz - 1;
+			int cell = (ix * ny + iy) * nz + iz;
+			cell_index[k] = cell;
+			next[k] = head[cell];
+			head[cell] = k;
+		}
+	}
+
 	for(int k=1;k<logdt.Ncen;++k){
 		nmtotal++;
 		vec_A=vt[nmtotal].x*vt[nmtotal].x + vt[nmtotal].y*vt[nmtotal].y + vt[nmtotal].z*vt[nmtotal].z;
 		vec_A=sqrt(vec_A);
 		int nbtotal=-1;
 		int clustmin=10000000;
-		for(int s=0;s<logdt.Ncen;++s){
-			clustnb[s]=-1;
-		}
-		for(int i=0;i<nmtotal;++i){
-			rx=vt[nmtotal].cenx-vt[i].cenx;
-			ry=vt[nmtotal].ceny-vt[i].ceny;
-			rz=vt[nmtotal].cenz-vt[i].cenz;
-			if(rx>logdt.box_x/2){rx=rx-logdt.box_x;}
-			if(rx<-logdt.box_x/2){rx=rx+logdt.box_x;}
-			if(ry>logdt.box_y/2){ry=ry-logdt.box_y;}
-			if(ry<-logdt.box_y/2){ry=ry+logdt.box_y;}
-			if(rz>logdt.box_z/2){rz=rz-logdt.box_z;}
-			if(rz<-logdt.box_z/2){rz=rz+logdt.box_z;}
-			rx=rx*rx+ry*ry+rz*rz;
-			rx=sqrt(rx);
-			if(rx<=Rdf && vt[nmtotal].sop>=sop_j && vt[i].sop>=sop_j){
-				vec_AB=vt[nmtotal].x*vt[i].x + vt[nmtotal].y*vt[i].y + vt[nmtotal].z*vt[i].z;
-				vec_B=vt[i].x*vt[i].x + vt[i].y*vt[i].y + vt[i].z*vt[i].z;
-				vec_B=sqrt(vec_B);
-				CosD=vec_AB/(vec_A*vec_B);
-				p2=(3*CosD*CosD-1)/2;
-				if(p2>=cluster_judge){
-					kcluster=cluster2[i];
-					clustertrue=findproclust(kcluster,logdt);
-					for(int s=0;s<=nbtotal;++s){
-						if(clustertrue==clustnb[s]){
-							goto part;
+		std::fill(clustnb.begin(), clustnb.end(), -1);
+		int cell = cell_index[nmtotal];
+		int cx = cell / (ny * nz);
+		int cy = (cell / nz) % ny;
+		int cz = cell % nz;
+		for(int dx=-1; dx<=1; ++dx){
+			int nx_i = (cx + dx + nx) % nx;
+			for(int dy=-1; dy<=1; ++dy){
+				int ny_i = (cy + dy + ny) % ny;
+				for(int dz=-1; dz<=1; ++dz){
+					int nz_i = (cz + dz + nz) % nz;
+					int neighbor = (nx_i * ny + ny_i) * nz + nz_i;
+					for(int i=head[neighbor]; i!=-1; i=next[i]){
+						if(i>=nmtotal){
+							continue;
+						}
+						rx=vt[nmtotal].cenx-vt[i].cenx;
+						ry=vt[nmtotal].ceny-vt[i].ceny;
+						rz=vt[nmtotal].cenz-vt[i].cenz;
+						if(rx>logdt.box_x/2){rx=rx-logdt.box_x;}
+						if(rx<-logdt.box_x/2){rx=rx+logdt.box_x;}
+						if(ry>logdt.box_y/2){ry=ry-logdt.box_y;}
+						if(ry<-logdt.box_y/2){ry=ry+logdt.box_y;}
+						if(rz>logdt.box_z/2){rz=rz-logdt.box_z;}
+						if(rz<-logdt.box_z/2){rz=rz+logdt.box_z;}
+						rx=rx*rx+ry*ry+rz*rz;
+						rx=sqrt(rx);
+						if(rx<=Rdf && vt[nmtotal].sop>=sop_j && vt[i].sop>=sop_j){
+							vec_AB=vt[nmtotal].x*vt[i].x + vt[nmtotal].y*vt[i].y + vt[nmtotal].z*vt[i].z;
+							vec_B=vt[i].x*vt[i].x + vt[i].y*vt[i].y + vt[i].z*vt[i].z;
+							vec_B=sqrt(vec_B);
+							CosD=vec_AB/(vec_A*vec_B);
+							p2=(3*CosD*CosD-1)/2;
+							if(p2>=cluster_judge){
+								kcluster=cluster2[i];
+								clustertrue=findproclust(kcluster,logdt);
+								bool seen=false;
+								for(int s=0;s<=nbtotal;++s){
+									if(clustertrue==clustnb[s]){
+										seen=true;
+										break;
+									}
+								}
+								if(seen){
+									continue;
+								}
+								nbtotal++;
+								clustnb[nbtotal]=clustertrue;
+								clustmin=min(clustertrue, clustmin);
+							}
 						}
 					}
-					nbtotal++;
-					clustnb[nbtotal]=clustertrue;
-					clustmin=min(clustertrue, clustmin);
 				}
 			}
-			part:continue;
-		} 
+		}
+ 
 		
 		if(nbtotal==-1){
 			totcluster++;
@@ -100,37 +185,22 @@ void cluster_1(double sop_j, double cluster_p[], DATA vt[], LOG& logdt){
 		part2:continue;
 	}
 	
-	int nl[nmtotal];
-	int site[nmtotal];
+	vector<int> nl(nmtotal, 0);
+	vector<int> site(nmtotal, 0);
 
-	double id_centroidx0[nmtotal];
-	double id_centroidy0[nmtotal];
-	double id_centroidz0[nmtotal];
-	double id_centroidx1[nmtotal];
-	double id_centroidy1[nmtotal];
-	double id_centroidz1[nmtotal];
-	double id_vx[nmtotal];
-	double id_vy[nmtotal];
-	double id_vz[nmtotal];	
-	double id_gyration[nmtotal];
-	double id_gyration_gyx2[nmtotal];
-	double id_gyration_gyy2[nmtotal];
-	double id_gyration_gyz2[nmtotal];
-	for(int i=0;i<nmtotal;++i){
-		nl[i]=0;
-		site[i]=0;
-
-		id_centroidx0[i]=0.0;
-		id_centroidy0[i]=0.0;
-		id_centroidz0[i]=0.0;
-		id_centroidx1[i]=0.0;
-		id_centroidy1[i]=0.0;
-		id_centroidz1[i]=0.0;
-		id_gyration[i]=0.0;
-		id_gyration_gyx2[i]=0.0;
-		id_gyration_gyy2[i]=0.0;
-		id_gyration_gyz2[i]=0.0;
-	}
+	vector<double> id_centroidx0(nmtotal, 0.0);
+	vector<double> id_centroidy0(nmtotal, 0.0);
+	vector<double> id_centroidz0(nmtotal, 0.0);
+	vector<double> id_centroidx1(nmtotal, 0.0);
+	vector<double> id_centroidy1(nmtotal, 0.0);
+	vector<double> id_centroidz1(nmtotal, 0.0);
+	vector<double> id_vx(nmtotal, 0.0);
+	vector<double> id_vy(nmtotal, 0.0);
+	vector<double> id_vz(nmtotal, 0.0);
+	vector<double> id_gyration(nmtotal, 0.0);
+	vector<double> id_gyration_gyx2(nmtotal, 0.0);
+	vector<double> id_gyration_gyy2(nmtotal, 0.0);
+	vector<double> id_gyration_gyz2(nmtotal, 0.0);
 	for(int i=0;i<nmtotal;++i){
 		double xx=vt[i].cenx;
 		double yy=vt[i].ceny;
@@ -241,25 +311,90 @@ void cluster_1(double sop_j, double cluster_p[], DATA vt[], LOG& logdt){
 	logdt.Ncl_all_sop=cl_all;
 }
 
-void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], DATA vt[], DATA2 bt[][MOL2], LOG& logdt){
+void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], vector<DATA>& vt, vector<vector<DATA2>>& bt, LOG& logdt){
 	int nmtotal=0,temp;
 	int totcluster=0;
 	int kcluster,clustertrue;
-	for(int i=0;i<AT;i++){
-		logdt.ncluster[i]=0;
-	}
+	logdt.reset_clusters(logdt.Ncen + 1);
 	logdt.ncluster[0]=1;
-	int* clustnb=new int[logdt.Ncen+1];
-	int* cluster2=new int[logdt.Ncen+1];
-	for(int s=0;s<logdt.Ncen;++s){
-		cluster2[s]=0;
-	}
+	vector<int> clustnb(logdt.Ncen + 1, -1);
+	vector<int> cluster2(logdt.Ncen + 1, 0);
 	cluster2[0]=1;
 	double rx,ry,rz,vec_AB,vec_A,vec_B,CosD,p2;
 	
 	double Rdf=cluster_p[1];
 	double cluster_judge=cluster_p[2];
-	
+	logdt.reset_dtt_clusters(logdt.Ncen + 1);
+	int ncen = logdt.Ncen;
+	static vector<int> head;
+	static vector<int> next;
+	static vector<int> cell_index;
+	static vector<double> prev_cenx;
+	static vector<double> prev_ceny;
+	static vector<double> prev_cenz;
+	static double prev_box_x = 0.0;
+	static double prev_box_y = 0.0;
+	static double prev_box_z = 0.0;
+	static double prev_Rdf = 0.0;
+	bool reuse_cells = false;
+	int nx = (Rdf > 0.0) ? int(logdt.box_x / Rdf) : 1;
+	int ny = (Rdf > 0.0) ? int(logdt.box_y / Rdf) : 1;
+	int nz = (Rdf > 0.0) ? int(logdt.box_z / Rdf) : 1;
+	if (nx < 1) nx = 1;
+	if (ny < 1) ny = 1;
+	if (nz < 1) nz = 1;
+	int ncell = nx * ny * nz;
+	if (!cell_index.empty() && prev_cenx.size() == static_cast<size_t>(ncen) && prev_box_x == logdt.box_x && prev_box_y == logdt.box_y && prev_box_z == logdt.box_z && prev_Rdf == Rdf) {
+		double threshold = (Rdf > 0.0) ? 0.25 * Rdf : 0.0;
+		if (threshold > 0.0) {
+			double max_disp2 = 0.0;
+			for (int k = 0; k < ncen; ++k) {
+				double dx = vt[k].cenx - prev_cenx[k];
+				double dy = vt[k].ceny - prev_ceny[k];
+				double dz = vt[k].cenz - prev_cenz[k];
+				double d2 = dx * dx + dy * dy + dz * dz;
+				if (d2 > max_disp2) max_disp2 = d2;
+				prev_cenx[k] = vt[k].cenx;
+				prev_ceny[k] = vt[k].ceny;
+				prev_cenz[k] = vt[k].cenz;
+			}
+			reuse_cells = max_disp2 <= (threshold * threshold);
+		}
+	}
+	if (!reuse_cells) {
+		head.assign(ncell, -1);
+		next.assign(ncen, -1);
+		cell_index.assign(ncen, 0);
+		prev_cenx.assign(ncen, 0.0);
+		prev_ceny.assign(ncen, 0.0);
+		prev_cenz.assign(ncen, 0.0);
+		prev_box_x = logdt.box_x;
+		prev_box_y = logdt.box_y;
+		prev_box_z = logdt.box_z;
+		prev_Rdf = Rdf;
+		for (int k = 0; k < ncen; ++k) {
+			prev_cenx[k] = vt[k].cenx;
+			prev_ceny[k] = vt[k].ceny;
+			prev_cenz[k] = vt[k].cenz;
+			double fx = (vt[k].cenx - logdt.box_xlo) / logdt.box_x;
+			double fy = (vt[k].ceny - logdt.box_ylo) / logdt.box_y;
+			double fz = (vt[k].cenz - logdt.box_zlo) / logdt.box_z;
+			fx -= floor(fx);
+			fy -= floor(fy);
+			fz -= floor(fz);
+			int ix = int(fx * nx);
+			int iy = int(fy * ny);
+			int iz = int(fz * nz);
+			if (ix == nx) ix = nx - 1;
+			if (iy == ny) iy = ny - 1;
+			if (iz == nz) iz = nz - 1;
+			int cell = (ix * ny + iy) * nz + iz;
+			cell_index[k] = cell;
+			next[k] = head[cell];
+			head[cell] = k;
+		}
+	}
+
 	int k1,k2,s1,s2,id1,id2;
 	
 	for(int k=1;k<logdt.Ncen;++k){
@@ -271,45 +406,65 @@ void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], DATA vt[], DATA2
 		vec_A=sqrt(vec_A);
 		int nbtotal=-1;
 		int clustmin=10000000;
-		for(int s=0;s<logdt.Ncen;++s){
-			clustnb[s]=-1;
-		}
-		for(int i=0;i<nmtotal;++i){
-			k2=vt[i].btid_k;
-			s2=vt[i].btid_s;
-			id2=bt[k2][s2].dttid;
-			rx=vt[nmtotal].cenx-vt[i].cenx;
-			ry=vt[nmtotal].ceny-vt[i].ceny;
-			rz=vt[nmtotal].cenz-vt[i].cenz;
-			if(rx>logdt.box_x/2){rx=rx-logdt.box_x;}
-			if(rx<-logdt.box_x/2){rx=rx+logdt.box_x;}
-			if(ry>logdt.box_y/2){ry=ry-logdt.box_y;}
-			if(ry<-logdt.box_y/2){ry=ry+logdt.box_y;}
-			if(rz>logdt.box_z/2){rz=rz-logdt.box_z;}
-			if(rz<-logdt.box_z/2){rz=rz+logdt.box_z;}
-			rx=rx*rx+ry*ry+rz*rz;
-			rx=sqrt(rx);
-			if(rx<=Rdf && double(logdt.dtt_num[id1])>dtt_sj && double(logdt.dtt_num[id2])>dtt_sj){
-				vec_AB=vt[nmtotal].x*vt[i].x + vt[nmtotal].y*vt[i].y + vt[nmtotal].z*vt[i].z;
-				vec_B=vt[i].x*vt[i].x + vt[i].y*vt[i].y + vt[i].z*vt[i].z;
-				vec_B=sqrt(vec_B);
-				CosD=vec_AB/(vec_A*vec_B);
-				p2=(3*CosD*CosD-1)/2;
-				if(p2>=cluster_judge){
-					kcluster=cluster2[i];
-					clustertrue=findproclust(kcluster,logdt);
-					for(int s=0;s<=nbtotal;++s){
-						if(clustertrue==clustnb[s]){
-							goto part;
+		std::fill(clustnb.begin(), clustnb.end(), -1);
+		int cell = cell_index[nmtotal];
+		int cx = cell / (ny * nz);
+		int cy = (cell / nz) % ny;
+		int cz = cell % nz;
+		for(int dx=-1; dx<=1; ++dx){
+			int nx_i = (cx + dx + nx) % nx;
+			for(int dy=-1; dy<=1; ++dy){
+				int ny_i = (cy + dy + ny) % ny;
+				for(int dz=-1; dz<=1; ++dz){
+					int nz_i = (cz + dz + nz) % nz;
+					int neighbor = (nx_i * ny + ny_i) * nz + nz_i;
+					for(int i=head[neighbor]; i!=-1; i=next[i]){
+						if(i>=nmtotal){
+							continue;
+						}
+						k2=vt[i].btid_k;
+						s2=vt[i].btid_s;
+						id2=bt[k2][s2].dttid;
+						rx=vt[nmtotal].cenx-vt[i].cenx;
+						ry=vt[nmtotal].ceny-vt[i].ceny;
+						rz=vt[nmtotal].cenz-vt[i].cenz;
+						if(rx>logdt.box_x/2){rx=rx-logdt.box_x;}
+						if(rx<-logdt.box_x/2){rx=rx+logdt.box_x;}
+						if(ry>logdt.box_y/2){ry=ry-logdt.box_y;}
+						if(ry<-logdt.box_y/2){ry=ry+logdt.box_y;}
+						if(rz>logdt.box_z/2){rz=rz-logdt.box_z;}
+						if(rz<-logdt.box_z/2){rz=rz+logdt.box_z;}
+						rx=rx*rx+ry*ry+rz*rz;
+						rx=sqrt(rx);
+						if(rx<=Rdf && double(logdt.dtt_num[id1])>dtt_sj && double(logdt.dtt_num[id2])>dtt_sj){
+							vec_AB=vt[nmtotal].x*vt[i].x + vt[nmtotal].y*vt[i].y + vt[nmtotal].z*vt[i].z;
+							vec_B=vt[i].x*vt[i].x + vt[i].y*vt[i].y + vt[i].z*vt[i].z;
+							vec_B=sqrt(vec_B);
+							CosD=vec_AB/(vec_A*vec_B);
+							p2=(3*CosD*CosD-1)/2;
+							if(p2>=cluster_judge){
+								kcluster=cluster2[i];
+								clustertrue=findproclust(kcluster,logdt);
+								bool seen=false;
+								for(int s=0;s<=nbtotal;++s){
+									if(clustertrue==clustnb[s]){
+										seen=true;
+										break;
+									}
+								}
+								if(seen){
+									continue;
+								}
+								nbtotal++;
+								clustnb[nbtotal]=clustertrue;
+								clustmin=min(clustertrue, clustmin);
+							}
 						}
 					}
-					nbtotal++;
-					clustnb[nbtotal]=clustertrue;
-					clustmin=min(clustertrue, clustmin);
 				}
 			}
-			part:continue;
 		}
+
 	
 		if(nbtotal==-1){
 			totcluster++;
@@ -335,37 +490,22 @@ void cluster_2(double dtt_j, double dtt_sj, double cluster_p[], DATA vt[], DATA2
 		part2:continue;
 	}
 	
-	int nl[nmtotal];
-	int site[nmtotal];
+	vector<int> nl(nmtotal, 0);
+	vector<int> site(nmtotal, 0);
 
-	double id_centroidx0[nmtotal];
-	double id_centroidy0[nmtotal];
-	double id_centroidz0[nmtotal];
-	double id_centroidx1[nmtotal];
-	double id_centroidy1[nmtotal];
-	double id_centroidz1[nmtotal];
-	double id_vx[nmtotal];
-	double id_vy[nmtotal];
-	double id_vz[nmtotal];	
-	double id_gyration[nmtotal];
-	double id_gyration_gyx2[nmtotal];
-	double id_gyration_gyy2[nmtotal];
-	double id_gyration_gyz2[nmtotal];
-	for(int i=0;i<nmtotal;++i){
-		nl[i]=0;
-		site[i]=0;
-
-		id_centroidx0[i]=0.0;
-		id_centroidy0[i]=0.0;
-		id_centroidz0[i]=0.0;
-		id_centroidx1[i]=0.0;
-		id_centroidy1[i]=0.0;
-		id_centroidz1[i]=0.0;
-		id_gyration[i]=0.0;
-		id_gyration_gyx2[i]=0.0;
-		id_gyration_gyy2[i]=0.0;
-		id_gyration_gyz2[i]=0.0;
-	}
+	vector<double> id_centroidx0(nmtotal, 0.0);
+	vector<double> id_centroidy0(nmtotal, 0.0);
+	vector<double> id_centroidz0(nmtotal, 0.0);
+	vector<double> id_centroidx1(nmtotal, 0.0);
+	vector<double> id_centroidy1(nmtotal, 0.0);
+	vector<double> id_centroidz1(nmtotal, 0.0);
+	vector<double> id_vx(nmtotal, 0.0);
+	vector<double> id_vy(nmtotal, 0.0);
+	vector<double> id_vz(nmtotal, 0.0);
+	vector<double> id_gyration(nmtotal, 0.0);
+	vector<double> id_gyration_gyx2(nmtotal, 0.0);
+	vector<double> id_gyration_gyy2(nmtotal, 0.0);
+	vector<double> id_gyration_gyz2(nmtotal, 0.0);
 	for(int i=0;i<nmtotal;++i){
 		double xx=vt[i].cenx;
 		double yy=vt[i].ceny;
