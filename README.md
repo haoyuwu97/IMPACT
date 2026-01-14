@@ -1,4 +1,4 @@
-# IMPACT (Integrated Multi-topology & Multi-criteria Polymeric Analysis of Crystallization & Cluster Toolkit)
+# IMPACT: Integrated Multi-topology & Multi-criteria Polymeric Analysis of Crystallization & Cluster Toolkit
 
 IMPACT is a coarse-grained (CG) crystallization analysis toolkit for semi-crystalline polymers and polymeric nanocomposites. It supports structural order parameter (SOP) and trans-trans conformation (dtt) crystallinity analysis, optional cluster and polymer chain conformation analysis, and volume-based crystallinity estimation.
 
